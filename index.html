@@ -4,6 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Harmonische Reihe – global</title>
+  <script>
+  window.MathJax = {
+    tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['\\[','\\]'], ['$$','$$']] },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
   <style>
     body{font-family:system-ui;margin:24px;background:#0b0f14;color:#e6edf3}
     .card{background:#121a23;border:1px solid #233244;border-radius:16px;padding:16px;max-width:980px}
@@ -47,6 +54,13 @@
     <p id="status" class="mono small"></p>
     
   </div>
+
+
+  <div>
+  \[
+    H_n=\sum_{k=1}^{n}\frac{1}{k}.
+  \]
+</div>
 
   <script>
     const sumEl = document.getElementById('sum');
