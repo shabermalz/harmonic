@@ -7,46 +7,91 @@
   <style>
     body{font-family:system-ui;margin:24px;background:#0b0f14;color:#e6edf3}
     .card{background:#121a23;border:1px solid #233244;border-radius:16px;padding:16px;max-width:980px}
-    .row{display:flex;gap:20px;flex-wrap:wrap}
+    .row{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-end}
     .k{color:#9fb0c1;font-size:12px;text-transform:uppercase;letter-spacing:.08em}
     .v{font-size:22px;font-variant-numeric:tabular-nums}
     .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
-    .small{color:#b3c0cf}
+    .small{color:#b3c0cf;max-width:980px}
+    .ok{color:#b7f7c4}
+    .warn{color:#ffd89a}
+    .err{color:#ffb4b4}
+    a{color:#8ab4ff}
   </style>
 </head>
 <body>
   <h1>Harmonische Reihe (global)</h1>
-  <p class="small">Diese Summe wird serverseitig (GitHub Actions Cron) fortgeschrieben. Alle sehen dieselbe Summe.</p>
+  <p class="small">
+    Diese Seite lädt <code class="mono">status.json</code> regelmäßig neu (mit Cache-Busting), damit alle Besucher dieselbe Summe sehen.
+  </p>
 
   <div class="card">
     <div class="row">
-      <div><div class="k">Summe Hₙ</div><div id="sum" class="v mono">…</div></div>
-      <div><div class="k">n</div><div id="n" class="v mono">…</div></div>
-      <div><div class="k">zuletzt aktualisiert</div><div id="upd" class="v mono">…</div></div>
+      <div>
+        <div class="k">Summe H<sub>n</sub></div>
+        <div id="sum" class="v mono">…</div>
+      </div>
+      <div>
+        <div class="k">n</div>
+        <div id="n" class="v mono">…</div>
+      </div>
+      <div>
+        <div class="k">zuletzt aktualisiert (UTC)</div>
+        <div id="upd" class="v mono">…</div>
+      </div>
+      <div>
+        <div class="k">letzte Abfrage</div>
+        <div id="lastFetch" class="v mono">…</div>
+      </div>
     </div>
-    <p id="err" class="mono" style="color:#ffb4b4"></p>
+
+    <p id="status" class="mono small"></p>
+    <p class="small">
+      Direktlink JSON: <a href="./status.json" target="_blank" rel="noopener">status.json</a>
+      (Hinweis: der Browser kann das ohne Cache-Busting cachen; die Seite hier umgeht das.)
+    </p>
   </div>
 
   <script>
     const sumEl = document.getElementById('sum');
     const nEl = document.getElementById('n');
     const updEl = document.getElementById('upd');
-    const errEl = document.getElementById('err');
+    const lastFetchEl = document.getElementById('lastFetch');
+    const statusEl = document.getElementById('status');
 
-    async function refresh(){
-      try{
-        const r = await fetch('./status.json', {cache:'no-store'});
-        if(!r.ok) throw new Error('HTTP ' + r.status);
+    function fmtNumber(x) {
+      // Gut lesbar + stabil: 16 signifikante Stellen
+      return Number(x).toPrecision(16);
+    }
+
+    function setStatus(msg, cls) {
+      statusEl.className = `mono small ${cls || ''}`;
+      statusEl.textContent = msg;
+    }
+
+    async function refresh() {
+      try {
+        // Cache busting: erzwingt frisches status.json trotz CDN/Browser-Cache
+        const url = `./status.json?ts=${Date.now()}`;
+        const r = await fetch(url, { cache: 'no-store' });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+
         const j = await r.json();
-        sumEl.textContent = Number(j.sum).toPrecision(16);
+        sumEl.textContent = fmtNumber(j.sum);
         nEl.textContent = String(j.n);
-        updEl.textContent = new Date(j.updated_at).toLocaleString();
-        errEl.textContent = '';
-      }catch(e){
-        errEl.textContent = 'Fehler: ' + e.message;
+
+        // updated_at ist ISO-String in UTC (aus dem Workflow)
+        const upd = j.updated_at ? new Date(j.updated_at) : null;
+        updEl.textContent = upd ? upd.toISOString() : '—';
+
+        lastFetchEl.textContent = new Date().toLocaleString();
+
+        setStatus('OK – Daten erfolgreich aktualisiert.', 'ok');
+      } catch (e) {
+        setStatus(`Fehler beim Laden: ${e.message}`, 'err');
       }
     }
 
+    // Sofort laden, dann alle 2 Sekunden aktualisieren
     refresh();
     setInterval(refresh, 2000);
   </script>
