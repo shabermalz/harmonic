@@ -1,0 +1,63 @@
+name: Update harmonic series
+
+on:
+  schedule:
+    - cron: "*/1 * * * *"   # jede Minute
+  workflow_dispatch:         # manuell startbar
+
+permissions:
+  contents: write            # damit der Workflow ins Repo committen darf
+
+concurrency:
+  group: harmonic-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update status.json
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, math
+          from datetime import datetime, timezone
+
+          path = "status.json"
+          with open(path, "r", encoding="utf-8") as f:
+            s = json.load(f)
+
+          n = int(s.get("n", 0))
+          total = float(s.get("sum", 0.0))
+
+          # Stellschraube: wie viele Summanden pro Minute?
+          # 200000 ist meist ok; wenn GitHub Actions zu langsam wird, kleiner machen.
+          steps_per_run = 200000
+
+          for _ in range(steps_per_run):
+            n += 1
+            total += 1.0 / n
+
+          s["n"] = n
+          s["sum"] = total
+          s["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+          with open(path, "w", encoding="utf-8") as f:
+            json.dump(s, f, ensure_ascii=False, indent=2)
+          PY
+
+      - name: Commit & push if changed
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add status.json
+          if git diff --cached --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git commit -m "Update harmonic status"
+          git push
