@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Harmonische Reihe – global</title>
+  <style>
+    body{font-family:system-ui;margin:24px;background:#0b0f14;color:#e6edf3}
+    .card{background:#121a23;border:1px solid #233244;border-radius:16px;padding:16px;max-width:980px}
+    .row{display:flex;gap:20px;flex-wrap:wrap}
+    .k{color:#9fb0c1;font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+    .v{font-size:22px;font-variant-numeric:tabular-nums}
+    .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+    .small{color:#b3c0cf}
+  </style>
+</head>
+<body>
+  <h1>Harmonische Reihe (global)</h1>
+  <p class="small">Diese Summe wird serverseitig (GitHub Actions Cron) fortgeschrieben. Alle sehen dieselbe Summe.</p>
+
+  <div class="card">
+    <div class="row">
+      <div><div class="k">Summe Hₙ</div><div id="sum" class="v mono">…</div></div>
+      <div><div class="k">n</div><div id="n" class="v mono">…</div></div>
+      <div><div class="k">zuletzt aktualisiert</div><div id="upd" class="v mono">…</div></div>
+    </div>
+    <p id="err" class="mono" style="color:#ffb4b4"></p>
+  </div>
+
+  <script>
+    const sumEl = document.getElementById('sum');
+    const nEl = document.getElementById('n');
+    const updEl = document.getElementById('upd');
+    const errEl = document.getElementById('err');
+
+    async function refresh(){
+      try{
+        const r = await fetch('./status.json', {cache:'no-store'});
+        if(!r.ok) throw new Error('HTTP ' + r.status);
+        const j = await r.json();
+        sumEl.textContent = Number(j.sum).toPrecision(16);
+        nEl.textContent = String(j.n);
+        updEl.textContent = new Date(j.updated_at).toLocaleString();
+        errEl.textContent = '';
+      }catch(e){
+        errEl.textContent = 'Fehler: ' + e.message;
+      }
+    }
+
+    refresh();
+    setInterval(refresh, 2000);
+  </script>
+</body>
+</html>
